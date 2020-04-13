@@ -1,20 +1,28 @@
-var express = require("express");
-var mongoose = require("mongoose");
+const express = require("express");
+const logger = require("morgan");
+const mongoose = require("mongoose");
+const compression = require("compression");
 
-var app = express();
-var PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
-app.use(express.static("public"));
+const app = express();
+
+app.use(logger("dev"));
+
+app.use(compression());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-require("./routes/apiRoutes")(app);
-require("./routes/htmlRoutes")(app);
+app.use(express.static("public"));
 
-mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost/imageperformance", {
-  useNewUrlParser: true
+mongoose.connect("mongodb://localhost/budget", {
+  useNewUrlParser: true,
+  useFindAndModify: false
 });
 
-app.listen(PORT, function() {
-  console.log(`Now listening on port: ${PORT}`);
+// routes
+app.use(require("./routes/api.js"));
+
+app.listen(PORT, () => {
+  console.log(`App running on port ${PORT}!`);
 });
