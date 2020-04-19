@@ -8,7 +8,8 @@ const FILES_TO_CACHE = [
     "./dist/assets/icons/icon_256x256.7fed1e84821de9559f5dda2f61c72c1d.png",
     "./dist/assets/icons/icon_384x384.4974b5bbeb02c60c3f6f678cba2b3d6d.png",
     "./dist/assets/icons/icon_512x512.2359d8c5512984950d88b5dd9631999c.png",
-    "./dist/bundle.js"
+    "./dist/bundle.js",
+    "../routes/api.js"
   ];
   
   

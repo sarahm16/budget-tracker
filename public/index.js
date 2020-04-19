@@ -1,6 +1,94 @@
 let transactions = [];
 let myChart;
 
+let db;
+
+const request = indexedDB.open("budget", 1);
+
+request.onupgradeneeded = function(event) {
+  // create object store called "pending" and set autoIncrement to true
+ const db = event.target.result;
+ db.createObjectStore("pending", { autoIncrement: true });
+};
+
+request.onsuccess = function(event) {
+  db = event.target.result;
+
+  // check if app is online before reading from db
+  if (navigator.onLine) {
+    checkDatabase();
+  }
+};
+
+request.onerror = function(event) {
+  console.log("Woops! " + event.target.errorCode);
+};
+
+function saveRecord(record) {
+  // create a transaction on the pending db with readwrite access
+  const transaction = db.transaction(["pending"], "readwrite");
+
+  // access your pending object store
+  const store = transaction.objectStore("pending");
+
+  // add record to your store with add method.
+  store.add(record);
+}
+
+
+function checkDatabase() {
+  // open a transaction on your pending db
+  const transaction = db.transaction(["pending"], "readwrite");
+  // access your pending object store
+  const store = transaction.objectStore("pending");
+  // get all records from store and set to a variable
+  const getAll = store.getAll();
+
+  getAll.onsuccess = function() {
+    if (getAll.result.length > 0) {
+      fetch("/api/transaction/bulk", {
+        method: "POST",
+        body: JSON.stringify(getAll.result),
+        headers: {
+          Accept: "application/json, text/plain, */*",
+          "Content-Type": "application/json"
+        }
+      })
+      .then(response => response.json())
+      .then(() => {
+        // if successful, open a transaction on your pending db
+        const transaction = db.transaction(["pending"], "readwrite");
+
+        // access your pending object store
+        const store = transaction.objectStore("pending");
+
+        // clear all items in your store
+        store.clear();
+      });
+    }
+  };
+}
+
+// request.onupgradeneeded = ({ target }) => {
+//   const db = target.result;
+//   const objectStore = db.createObjectStore("offlineTransactions", {autoIncrement: true});
+//   objectStore.transaction.oncomplete = function(event) {
+//     const objStore = db.transaction(["offlineTransactions"], "readwrite").objectStore("offlineTransactions");
+//       let addRequest = objStore.add({name: "Sarah"});
+//       addRequest.onsuccess = function(event) {
+//         // event.target.result === customer.ssn;
+//         console.log('we added to the database')
+//       };
+//   }
+
+  //const object = transaction.objectStore("offlineTransactions");
+  //var addRequest = object.add({name: "hello"});
+  //addRequest.onsuccess = function(event) {
+    // event.target.result === customer.ssn;
+    //console.log('we added to the database')
+  //};
+//};
+
 fetch("/api/transaction")
   .then(response => {
     return response.json();
@@ -13,10 +101,6 @@ fetch("/api/transaction")
     populateTable();
     populateChart();
   });
-
-function saveRecord() {
-  console.log(transaction)
-}
 
 function populateTotal() {
   // reduce transaction amounts to a single total value
@@ -103,6 +187,8 @@ function sendTransaction(isAdding) {
     date: new Date().toISOString()
   };
 
+  //console.log("transaction: " + json.stringify(transaction))
+
   // if subtracting funds, convert amount to negative number
   if (!isAdding) {
     transaction.value *= -1;
@@ -115,7 +201,7 @@ function sendTransaction(isAdding) {
   populateChart();
   populateTable();
   populateTotal();
-  
+
   // also send to server
   fetch("/api/transaction", {
     method: "POST",
@@ -125,7 +211,7 @@ function sendTransaction(isAdding) {
       "Content-Type": "application/json"
     }
   })
-  .then(response => {    
+  .then(response => {
     return response.json();
   })
   .then(data => {
@@ -141,6 +227,7 @@ function sendTransaction(isAdding) {
   .catch(err => {
     // fetch failed, so save in indexed db
     saveRecord(transaction);
+    console.log('hello')
 
     // clear form
     nameEl.value = "";
@@ -155,3 +242,5 @@ document.querySelector("#add-btn").onclick = function() {
 document.querySelector("#sub-btn").onclick = function() {
   sendTransaction(false);
 };
+
+window.addEventListener("online", checkDatabase);
